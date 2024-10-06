@@ -9,80 +9,133 @@ function App() {
   const dataChannel = useRef(null);
 
   const configuration = {
-    iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+    iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
   };
 
   const handleConnection = async () => {
-    peerConnection.current = new RTCPeerConnection(configuration);
+    try {
+      peerConnection.current = new RTCPeerConnection(configuration);
+      console.log('Peer connection created');
 
-    // ICE candidates' handling
-    peerConnection.current.onicecandidate = (event) => {
-      if (event.candidate) {
-        console.log('New ICE candidate:', JSON.stringify(event.candidate));
-      }
-    };
+      // ICE candidates' handling
+      peerConnection.current.onicecandidate = (event) => {
+        if (event.candidate) {
+          console.log('New ICE candidate:', JSON.stringify(event.candidate));
+          // ICE adayını karşı tarafa iletmek için gerekli kod buraya eklenmeli
+        }
+      };
 
-    // Data channel creation for messages
-    dataChannel.current = peerConnection.current.createDataChannel('chat');
-    dataChannel.current.onmessage = (event) => {
-      setChat((prevChat) => [...prevChat, { sender: 'Peer', message: event.data }]);
-    };
+      // Data channel creation for messages
+      dataChannel.current = peerConnection.current.createDataChannel('chat');
+      console.log('Data channel created:', dataChannel.current);
 
-    // Offer oluştur ve yerel olarak ayarla
-    const offer = await peerConnection.current.createOffer();
-    await peerConnection.current.setLocalDescription(offer);
-    console.log('Offer:', JSON.stringify(offer));
+      dataChannel.current.onmessage = (event) => {
+        console.log('Message received from peer:', event.data);
+        setChat((prevChat) => [...prevChat, { sender: 'Peer', message: event.data }]);
+      };
 
-    // Offer'ı linke ekle
-    const encodedOffer = encodeURIComponent(JSON.stringify(offer));
-    const link = `${window.location.origin}?offer=${encodedOffer}`;
-    setLink(link);
+      dataChannel.current.onopen = () => {
+        console.log('Data channel is open');
+      };
+
+      dataChannel.current.onclose = () => {
+        console.log('Data channel is closed');
+      };
+
+      // Offer oluştur ve yerel olarak ayarla
+      const offer = await peerConnection.current.createOffer();
+      await peerConnection.current.setLocalDescription(offer);
+      console.log('Offer created:', JSON.stringify(offer));
+
+      // Offer'ı linke ekle
+      const encodedOffer = encodeURIComponent(JSON.stringify(offer));
+      const link = `${window.location.origin}?offer=${encodedOffer}`;
+      setLink(link);
+      console.log('Link generated:', link);
+    } catch (error) {
+      console.error('Error in handleConnection:', error);
+    }
   };
 
   const handleAnswer = async (offer) => {
-    if (!peerConnection.current) {
-      peerConnection.current = new RTCPeerConnection(configuration);
-    }
-
-    // ICE candidates' handling
-    peerConnection.current.onicecandidate = (event) => {
-      if (event.candidate) {
-        console.log('New ICE candidate:', JSON.stringify(event.candidate));
+    try {
+      if (!peerConnection.current) {
+        peerConnection.current = new RTCPeerConnection(configuration);
+        console.log('Peer connection created in handleAnswer');
       }
-    };
 
-    peerConnection.current.ondatachannel = (event) => {
-      dataChannel.current = event.channel;
-      dataChannel.current.onmessage = (event) => {
-        setChat((prevChat) => [...prevChat, { sender: 'Peer', message: event.data }]);
+      // ICE candidates' handling
+      peerConnection.current.onicecandidate = (event) => {
+        if (event.candidate) {
+          console.log('New ICE candidate:', JSON.stringify(event.candidate));
+          // ICE adayını karşı tarafa iletmek için gerekli kod buraya eklenmeli
+        }
       };
-    };
 
-    // Offer'ı setRemoteDescription olarak ayarla
-    await peerConnection.current.setRemoteDescription(new RTCSessionDescription(offer));
+      peerConnection.current.ondatachannel = (event) => {
+        dataChannel.current = event.channel;
+        console.log('Data channel received:', dataChannel.current);
 
-    // Answer oluştur ve yerel olarak ayarla
-    const answer = await peerConnection.current.createAnswer();
-    await peerConnection.current.setLocalDescription(answer);
-    console.log('Answer:', JSON.stringify(answer));
-    setIsConnected(true);
+        dataChannel.current.onmessage = (event) => {
+          console.log('Message received from peer:', event.data);
+          setChat((prevChat) => [...prevChat, { sender: 'Peer', message: event.data }]);
+        };
+
+        dataChannel.current.onopen = () => {
+          console.log('Data channel is open');
+        };
+
+        dataChannel.current.onclose = () => {
+          console.log('Data channel is closed');
+        };
+      };
+
+      // Offer'ı setRemoteDescription olarak ayarla
+      await peerConnection.current.setRemoteDescription(new RTCSessionDescription(offer));
+      console.log('Remote description set with offer');
+
+      // Answer oluştur ve yerel olarak ayarla
+      const answer = await peerConnection.current.createAnswer();
+      await peerConnection.current.setLocalDescription(answer);
+      console.log('Answer created and local description set:', JSON.stringify(answer));
+
+      setIsConnected(true);
+    } catch (error) {
+      console.error('Error in handleAnswer:', error);
+    }
   };
 
   useEffect(() => {
-    // URL'den offer parametresini al
-    const params = new URLSearchParams(window.location.search);
-    const offer = params.get('offer');
-    if (offer) {
-      const parsedOffer = JSON.parse(decodeURIComponent(offer));
-      handleAnswer(parsedOffer);
+    try {
+      // URL'den offer parametresini al
+      const params = new URLSearchParams(window.location.search);
+      const offer = params.get('offer');
+      if (offer) {
+        const parsedOffer = JSON.parse(decodeURIComponent(offer));
+        console.log('Offer received from URL:', parsedOffer);
+        handleAnswer(parsedOffer);
+      }
+    } catch (error) {
+      console.error('Error in useEffect:', error);
     }
   }, []);
 
   const sendMessage = () => {
-    if (dataChannel.current && message) {
-      dataChannel.current.send(message);
-      setChat((prevChat) => [...prevChat, { sender: 'You', message }]);
-      setMessage('');
+    try {
+      if (dataChannel.current && dataChannel.current.readyState === 'open') {
+        if (message) {
+          dataChannel.current.send(message);
+          console.log('Message sent:', message);
+          setChat((prevChat) => [...prevChat, { sender: 'You', message }]);
+          setMessage('');
+        } else {
+          console.log('No message to send');
+        }
+      } else {
+        console.log('Data channel is not open or not ready');
+      }
+    } catch (error) {
+      console.error('Error in sendMessage:', error);
     }
   };
 
