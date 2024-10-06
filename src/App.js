@@ -21,7 +21,8 @@ function App() {
       peerConnection.current.onicecandidate = (event) => {
         if (event.candidate) {
           console.log('New ICE candidate:', JSON.stringify(event.candidate));
-          // ICE adayını karşı tarafa iletmek için gerekli kod buraya eklenmeli
+          // ICE adayını karşı tarafa iletmek için bir mekanizma ekle (örn. WebSocket veya başka bir yöntem)
+          sendIceCandidateToPeer(JSON.stringify(event.candidate));
         }
       };
 
@@ -68,7 +69,8 @@ function App() {
       peerConnection.current.onicecandidate = (event) => {
         if (event.candidate) {
           console.log('New ICE candidate:', JSON.stringify(event.candidate));
-          // ICE adayını karşı tarafa iletmek için gerekli kod buraya eklenmeli
+          // ICE adayını karşı tarafa iletmek için gerekli mekanizma eklenmeli
+          sendIceCandidateToPeer(JSON.stringify(event.candidate));
         }
       };
 
@@ -137,6 +139,13 @@ function App() {
     } catch (error) {
       console.error('Error in sendMessage:', error);
     }
+  };
+
+  const sendIceCandidateToPeer = (candidate) => {
+    // Bu fonksiyonda ICE adaylarını karşı tarafa göndermelisin
+    // Örneğin WebSocket veya başka bir yol ile
+    console.log('Sending ICE candidate to peer:', candidate);
+    // Gerçek dünyada burada ICE adayını WebSocket üzerinden iletmelisin
   };
 
   return (
